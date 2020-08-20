@@ -1,0 +1,11 @@
+name: OnlineGUI
+version: 1.0.0
+main: com.craft0.mrivek.onlinegui.OnlineGUI
+description: Display all online players in minecraft inventory.
+softdepend: [Essentials, GroupManager]
+api-version: 1.15
+commands:
+  online:
+    usage: /online
+    description: See who is online on the server.
+    aliases: [players, list]
