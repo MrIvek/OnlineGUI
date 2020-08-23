@@ -8,9 +8,7 @@ import org.anjocaido.groupmanager.permissions.AnjoPermissionsHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -21,12 +19,13 @@ import com.earth2me.essentials.Essentials;
 
 public class OnlineGUI extends JavaPlugin implements Listener {
 
-	String pluginName = getName();
+	public OnlineGUI plugin = this;
 
 	public List<Inventory> onlineInventories = new ArrayList<Inventory>();
 	public static final int inventorySize = 54;
 	public static final int emptySlots = 45;
 	public Inventory inventory = Bukkit.createInventory(null, 54, "Online Players");
+	public static String packageName = Bukkit.getServer().getClass().getPackage().getName();
 
 	private GroupManager groupManager;
 	private Essentials essentialsX;
@@ -45,65 +44,29 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 		}
 
 		closeAllInventories();
-		getServer().getPluginManager().registerEvents(this, this);
+		getServer().getPluginManager().registerEvents(new GUIEvents(this), this);
 
 		getCommand("online").setExecutor(new OnlineCommand(this));
-
-		getLogger().info(pluginName + " Plugin Enabled.");
 		super.onEnable();
 	}
 
 	@Override
 	public void onDisable() {
-		getLogger().info(pluginName + " Plugin Disabled.");
 		super.onDisable();
-	}
-
-	@EventHandler
-	public void guiClicked(InventoryClickEvent event) {
-		Player player = (Player) event.getWhoClicked();
-		Inventory clickedInventory = event.getClickedInventory();
-		ItemStack clickedItem = event.getCurrentItem();
-
-		if (clickedInventory == null)
-			return;
-
-		if (clickedItem == null || clickedItem.equals(new ItemStack(Material.AIR)))
-			return;
-
-		if (event.getView().getTitle().startsWith("Online Players")) {
-			event.setCancelled(true);
-
-			if (clickedItem.equals(ItemBuilder.CLOSE)) {
-				player.closeInventory();
-				return;
-			}
-
-			if (clickedItem.equals(ItemBuilder.NEXT_PAGE)) {
-				player.openInventory(onlineInventories.get(onlineInventories.indexOf(clickedInventory) + 1));
-				return;
-			}
-
-			if (clickedItem.equals(ItemBuilder.PREVIOUS_PAGE)) {
-				player.openInventory(onlineInventories.get(onlineInventories.indexOf(clickedInventory) - 1));
-				return;
-			}
-			return;
-		}
-
 	}
 
 	public void open(Player player) {
 		int numberOfOnlinePlayers = getServer().getOnlinePlayers().size();
 		int neededInventories = Math.max(1, (int) Math.ceil((double) numberOfOnlinePlayers / emptySlots));
 		for (int i = 0; i < neededInventories; i++) {
-			onlineInventories.add(Bukkit.createInventory(null, inventorySize, "Online Players"));
+			onlineInventories.add(Bukkit.createInventory(null, inventorySize, "Online Players P" + i));
 		}
 
 		for (int i = 0; i < numberOfOnlinePlayers; i++) {
 			int inventoryIndex = i / emptySlots;
 
 			Inventory inventory = onlineInventories.get(inventoryIndex);
+			inventory.clear();
 			if (i == emptySlots) {
 				inventory = onlineInventories.get(inventoryIndex++);
 			}
@@ -111,7 +74,7 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 			for (Player onlinePlayer : getServer().getOnlinePlayers()) {
 				ItemStack playerHead = generatePlayerHead(onlinePlayer);
 				if (!inventory.contains(playerHead)) {
-					inventory.setItem(inventory.firstEmpty(), playerHead);
+					inventory.addItem(playerHead);
 				}
 			}
 
@@ -119,7 +82,7 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 				inventory.setItem(53, ItemBuilder.NEXT_PAGE);
 			}
 
-			if (inventoryIndex > 1) {
+			if (inventoryIndex >= 1) {
 				inventory.setItem(45, ItemBuilder.PREVIOUS_PAGE);
 			}
 
@@ -130,9 +93,26 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 		return;
 	}
 
+	@SuppressWarnings("deprecation")
 	public ItemStack generatePlayerHead(Player player) {
-		ItemStack playerSkull = new ItemStack(Material.PLAYER_HEAD, 1);
+		ItemStack playerSkull;
+		if (Bukkit.getBukkitVersion().contains("1.16") || Bukkit.getBukkitVersion().contains("1.15")
+				|| Bukkit.getBukkitVersion().contains("1.14") || Bukkit.getBukkitVersion().contains("1.13")) {
+			playerSkull = new ItemStack(Material.PLAYER_HEAD, 1);
+		} else {
+			playerSkull = new ItemStack(Material.valueOf("SKULL_ITEM"), 1, (short) 3);
+		}
+
 		SkullMeta playerSkullMeta = (SkullMeta) playerSkull.getItemMeta();
+
+		if (packageName.contains("1.13") || packageName.contains("1.14") || packageName.contains("1.15")
+				|| packageName.contains("1.16")) {
+			playerSkullMeta.setOwningPlayer(player);
+
+		} else {
+			playerSkullMeta.setOwner(player.getName());
+		}
+
 		playerSkullMeta.setDisplayName("§f" + player.getName());
 		List<String> lore = new ArrayList<String>();
 		if (player.isOp()) {
@@ -153,12 +133,11 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 
 			if (essentialsX.getUser(player).isMuted()) {
 				lore.add("§7----------");
-				lore.add("§4Muted");
+				lore.add("§4MUTED");
 			}
 		}
 
 		playerSkullMeta.setLore(lore);
-		playerSkullMeta.setOwningPlayer(player);
 		playerSkull.setItemMeta(playerSkullMeta);
 		return playerSkull;
 	}

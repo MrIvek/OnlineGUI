@@ -11,6 +11,12 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 public class ItemBuilder {
 
+	public OnlineGUI plugin;
+
+	public ItemBuilder(OnlineGUI plugin) {
+		this.plugin = plugin;
+	}
+
 	public static final ItemStack NEXT_PAGE = buildNewItem(Material.ARROW, 1, "§fNext Page", null, false);
 	public static final ItemStack PREVIOUS_PAGE = buildNewItem(Material.ARROW, 1, "§fPrevious Page", null, false);
 	public static final ItemStack CLOSE = buildNewItem(Material.BARRIER, 1, "§cClose", null, false);
@@ -24,8 +30,13 @@ public class ItemBuilder {
 		if (lore != null) {
 			itemMeta.setLore(lore);
 		}
+		if (OnlineGUI.packageName.contains("1.13") || OnlineGUI.packageName.contains("1.14")
+				|| OnlineGUI.packageName.contains("1.15") || OnlineGUI.packageName.contains("1.16")) {
+			itemMeta.setUnbreakable(unbreakable);
+		} else {
+			unbreakable = false;
+		}
 
-		itemMeta.setUnbreakable(unbreakable);
 		itemStack.setItemMeta(itemMeta);
 		return itemStack;
 	}
