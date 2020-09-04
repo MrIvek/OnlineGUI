@@ -1,17 +1,17 @@
 package com.craft0.mrivek.onlinegui;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 import org.anjocaido.groupmanager.GroupManager;
 import org.anjocaido.groupmanager.permissions.AnjoPermissionsHandler;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -21,10 +21,10 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 
 	public OnlineGUI plugin = this;
 
-	public List<Inventory> onlineInventories = new ArrayList<Inventory>();
+	public HashMap<UUID, List<Inventory>> onlineInventories = new HashMap<>();
+	
 	public static final int inventorySize = 54;
 	public static final int emptySlots = 45;
-	public Inventory inventory = Bukkit.createInventory(null, 54, "Online Players");
 	public static String packageName = Bukkit.getServer().getClass().getPackage().getName();
 
 	private GroupManager groupManager;
@@ -58,21 +58,33 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 	public void open(Player player) {
 		int numberOfOnlinePlayers = getServer().getOnlinePlayers().size();
 		int neededInventories = Math.max(1, (int) Math.ceil((double) numberOfOnlinePlayers / emptySlots));
+		
+		List<Inventory> inventories = new ArrayList<>();
 		for (int i = 0; i < neededInventories; i++) {
-			onlineInventories.add(Bukkit.createInventory(null, inventorySize, "Online Players P" + i));
+			Inventory newInv = Bukkit.createInventory(null, inventorySize, "Online Players P" + i);
+			inventories.add(newInv);
 		}
+		onlineInventories.put(player.getUniqueId(), inventories);
 
 		for (int i = 0; i < numberOfOnlinePlayers; i++) {
 			int inventoryIndex = i / emptySlots;
 
-			Inventory inventory = onlineInventories.get(inventoryIndex);
+			Inventory inventory = onlineInventories.get(player.getUniqueId()).get(0);
 			inventory.clear();
 			if (i == emptySlots) {
-				inventory = onlineInventories.get(inventoryIndex++);
+				inventory = onlineInventories.get(player.getUniqueId()).get(inventoryIndex++);
 			}
 
 			for (Player onlinePlayer : getServer().getOnlinePlayers()) {
-				ItemStack playerHead = generatePlayerHead(onlinePlayer);
+				ItemStack playerHead = ItemBuilder.getInstance(this).generatePlayerHead(onlinePlayer);
+				if (essentialsX != null) {
+					if (essentialsX.getUser(onlinePlayer).isVanished()) {
+						if (!player.hasPermission("essentials.vanish.see")) {
+							continue;
+						}
+					}
+				}
+
 				if (!inventory.contains(playerHead)) {
 					inventory.addItem(playerHead);
 				}
@@ -89,57 +101,8 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 			inventory.setItem(49, ItemBuilder.CLOSE);
 		}
 
-		player.openInventory(onlineInventories.get(0));
+		player.openInventory(onlineInventories.get(player.getUniqueId()).get(0));
 		return;
-	}
-
-	@SuppressWarnings("deprecation")
-	public ItemStack generatePlayerHead(Player player) {
-		ItemStack playerSkull;
-		if (Bukkit.getBukkitVersion().contains("1.16") || Bukkit.getBukkitVersion().contains("1.15")
-				|| Bukkit.getBukkitVersion().contains("1.14") || Bukkit.getBukkitVersion().contains("1.13")) {
-			playerSkull = new ItemStack(Material.PLAYER_HEAD, 1);
-		} else {
-			playerSkull = new ItemStack(Material.valueOf("SKULL_ITEM"), 1, (short) 3);
-		}
-
-		SkullMeta playerSkullMeta = (SkullMeta) playerSkull.getItemMeta();
-
-		if (packageName.contains("1.13") || packageName.contains("1.14") || packageName.contains("1.15")
-				|| packageName.contains("1.16")) {
-			playerSkullMeta.setOwningPlayer(player);
-
-		} else {
-			playerSkullMeta.setOwner(player.getName());
-		}
-
-		playerSkullMeta.setDisplayName("§f" + player.getName());
-		List<String> lore = new ArrayList<String>();
-		if (player.isOp()) {
-			lore.add("§eOperator");
-		}
-
-		if (groupManager != null) {
-			lore.add("§7" + getGroup(player));
-		}
-
-		if (essentialsX != null) {
-			lore.add("§a$" + essentialsX.getUser(player).getMoney());
-
-			if (essentialsX.getUser(player) != null && essentialsX.getUser(player).isAfk()) {
-				lore.add("§7----------");
-				lore.add("§cAFK");
-			}
-
-			if (essentialsX.getUser(player).isMuted()) {
-				lore.add("§7----------");
-				lore.add("§4MUTED");
-			}
-		}
-
-		playerSkullMeta.setLore(lore);
-		playerSkull.setItemMeta(playerSkullMeta);
-		return playerSkull;
 	}
 
 	public void closeAllInventories() {
@@ -170,5 +133,13 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 			return null;
 		}
 		return handler.getUserSuffix(base.getName());
+	}
+	
+	public GroupManager getGroupManager() {
+		return groupManager;
+	}
+	
+	public Essentials getEssentials() {
+		return essentialsX;
 	}
 }

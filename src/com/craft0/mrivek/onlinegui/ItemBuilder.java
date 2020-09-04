@@ -1,20 +1,32 @@
 package com.craft0.mrivek.onlinegui;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.anjocaido.groupmanager.GroupManager;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
+
+import com.earth2me.essentials.Essentials;
 
 public class ItemBuilder {
 
 	public OnlineGUI plugin;
+	private GroupManager groupManager;
+	private Essentials essentialsX;
+	private static ItemBuilder itemBuilder;
 
 	public ItemBuilder(OnlineGUI plugin) {
 		this.plugin = plugin;
+		this.groupManager = plugin.getGroupManager();
+		this.essentialsX = plugin.getEssentials();
 	}
 
 	public static final ItemStack NEXT_PAGE = buildNewItem(Material.ARROW, 1, "§fNext Page", null, false);
@@ -64,6 +76,64 @@ public class ItemBuilder {
 
 		itemStack.setItemMeta(itemMeta);
 		return itemStack;
+	}
+
+	@SuppressWarnings("deprecation")
+	public ItemStack generatePlayerHead(Player player) {
+		ItemStack playerSkull;
+		if (Bukkit.getBukkitVersion().contains("1.16") || Bukkit.getBukkitVersion().contains("1.15")
+				|| Bukkit.getBukkitVersion().contains("1.14") || Bukkit.getBukkitVersion().contains("1.13")) {
+			playerSkull = new ItemStack(Material.PLAYER_HEAD, 1);
+		} else {
+			playerSkull = new ItemStack(Material.valueOf("SKULL_ITEM"), 1, (short) 3);
+		}
+
+		SkullMeta playerSkullMeta = (SkullMeta) playerSkull.getItemMeta();
+
+		if (OnlineGUI.packageName.contains("1.13") || OnlineGUI.packageName.contains("1.14")
+				|| OnlineGUI.packageName.contains("1.15") || OnlineGUI.packageName.contains("1.16")) {
+			playerSkullMeta.setOwningPlayer(player);
+
+		} else {
+			playerSkullMeta.setOwner(player.getName());
+		}
+
+		playerSkullMeta.setDisplayName("§f" + player.getName());
+		List<String> lore = new ArrayList<String>();
+		if (player.isOp()) {
+			lore.add("§eOperator");
+		}
+
+		if (groupManager != null) {
+			lore.add("§7" + plugin.getGroup(player));
+		}
+
+		if (essentialsX != null) {
+			lore.add("§a$" + essentialsX.getUser(player).getMoney());
+
+			if (essentialsX.getUser(player) != null && essentialsX.getUser(player).isAfk()) {
+				lore.add("§7----------");
+				lore.add("§cAFK");
+			}
+
+			if (essentialsX.getUser(player).isMuted()) {
+				lore.add("§7----------");
+				lore.add("§4MUTED");
+			}
+		}
+
+		playerSkullMeta.setLore(lore);
+		playerSkull.setItemMeta(playerSkullMeta);
+		return playerSkull;
+	}
+
+	public static ItemBuilder getInstance(OnlineGUI plugin) {
+		if (itemBuilder == null) {
+			itemBuilder = new ItemBuilder(plugin);
+			return itemBuilder;
+		}
+
+		return itemBuilder;
 	}
 
 }
