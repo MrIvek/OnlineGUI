@@ -32,6 +32,8 @@ public class ItemBuilder {
 	public static final ItemStack NEXT_PAGE = buildNewItem(Material.ARROW, 1, "§fNext Page", null, false);
 	public static final ItemStack PREVIOUS_PAGE = buildNewItem(Material.ARROW, 1, "§fPrevious Page", null, false);
 	public static final ItemStack CLOSE = buildNewItem(Material.BARRIER, 1, "§cClose", null, false);
+	public static final ItemStack BAN = buildNewItem(Material.PAPER, 1, "§6Ban", null, false);
+	public static final ItemStack KICK = buildNewItem(Material.FEATHER, 1, "§6Kick", null, false);
 
 	public static ItemStack buildNewItem(Material material, int amount, String displayName, List<String> lore,
 			boolean unbreakable) {
@@ -77,7 +79,7 @@ public class ItemBuilder {
 		itemStack.setItemMeta(itemMeta);
 		return itemStack;
 	}
-
+	
 	@SuppressWarnings("deprecation")
 	public ItemStack generatePlayerHead(Player player) {
 		ItemStack playerSkull;
@@ -120,6 +122,60 @@ public class ItemBuilder {
 				lore.add("§7----------");
 				lore.add("§4MUTED");
 			}
+		}
+
+		playerSkullMeta.setLore(lore);
+		playerSkull.setItemMeta(playerSkullMeta);
+		return playerSkull;
+	}
+	
+	@SuppressWarnings("deprecation")
+	public ItemStack generatePlayerHead(Player invViewer, Player player) {
+		ItemStack playerSkull;
+		if (Bukkit.getBukkitVersion().contains("1.16") || Bukkit.getBukkitVersion().contains("1.15")
+				|| Bukkit.getBukkitVersion().contains("1.14") || Bukkit.getBukkitVersion().contains("1.13")) {
+			playerSkull = new ItemStack(Material.PLAYER_HEAD, 1);
+		} else {
+			playerSkull = new ItemStack(Material.valueOf("SKULL_ITEM"), 1, (short) 3);
+		}
+
+		SkullMeta playerSkullMeta = (SkullMeta) playerSkull.getItemMeta();
+
+		if (OnlineGUI.packageName.contains("1.13") || OnlineGUI.packageName.contains("1.14")
+				|| OnlineGUI.packageName.contains("1.15") || OnlineGUI.packageName.contains("1.16")) {
+			playerSkullMeta.setOwningPlayer(player);
+
+		} else {
+			playerSkullMeta.setOwner(player.getName());
+		}
+
+		playerSkullMeta.setDisplayName("§f" + player.getName());
+		List<String> lore = new ArrayList<String>();
+		if (player.isOp()) {
+			lore.add("§eOperator");
+		}
+
+		if (groupManager != null) {
+			lore.add("§7" + plugin.getGroup(player));
+		}
+
+		if (essentialsX != null) {
+			lore.add("§a$" + essentialsX.getUser(player).getMoney());
+
+			if (essentialsX.getUser(player) != null && essentialsX.getUser(player).isAfk()) {
+				lore.add("§7----------");
+				lore.add("§cAFK");
+			}
+
+			if (essentialsX.getUser(player).isMuted()) {
+				lore.add("§7----------");
+				lore.add("§4MUTED");
+			}
+		}
+		
+		if(invViewer.isOp()) {
+			lore.add("");
+			lore.add("§7Left click to open command gui.");
 		}
 
 		playerSkullMeta.setLore(lore);

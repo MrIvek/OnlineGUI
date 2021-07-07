@@ -28,7 +28,7 @@ public class OnlineCommand implements CommandExecutor {
 		}
 
 		Player player = (Player) sender;
-		plugin.open(player);
+		plugin.openOnlineList(player);
 		return true;
 	}
 

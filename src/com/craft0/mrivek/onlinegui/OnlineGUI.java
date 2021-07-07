@@ -22,7 +22,7 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 	public OnlineGUI plugin = this;
 
 	public HashMap<UUID, List<Inventory>> onlineInventories = new HashMap<>();
-	
+
 	public static final int inventorySize = 54;
 	public static final int emptySlots = 45;
 	public static String packageName = Bukkit.getServer().getClass().getPackage().getName();
@@ -45,6 +45,7 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 
 		closeAllInventories();
 		getServer().getPluginManager().registerEvents(new GUIEvents(this), this);
+		getServer().getPluginManager().registerEvents(new OptionsGUI(this), this);
 
 		getCommand("online").setExecutor(new OnlineCommand(this));
 		super.onEnable();
@@ -55,10 +56,10 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 		super.onDisable();
 	}
 
-	public void open(Player player) {
+	public void openOnlineList(Player player) {
 		int numberOfOnlinePlayers = getServer().getOnlinePlayers().size();
 		int neededInventories = Math.max(1, (int) Math.ceil((double) numberOfOnlinePlayers / emptySlots));
-		
+
 		List<Inventory> inventories = new ArrayList<>();
 		for (int i = 0; i < neededInventories; i++) {
 			Inventory newInv = Bukkit.createInventory(null, inventorySize, "Online Players P" + i);
@@ -76,7 +77,7 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 			}
 
 			for (Player onlinePlayer : getServer().getOnlinePlayers()) {
-				ItemStack playerHead = ItemBuilder.getInstance(this).generatePlayerHead(onlinePlayer);
+				ItemStack playerHead = ItemBuilder.getInstance(this).generatePlayerHead(player, onlinePlayer);
 				if (essentialsX != null) {
 					if (essentialsX.getUser(onlinePlayer).isVanished()) {
 						if (!player.hasPermission("essentials.vanish.see")) {
@@ -134,11 +135,11 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 		}
 		return handler.getUserSuffix(base.getName());
 	}
-	
+
 	public GroupManager getGroupManager() {
 		return groupManager;
 	}
-	
+
 	public Essentials getEssentials() {
 		return essentialsX;
 	}

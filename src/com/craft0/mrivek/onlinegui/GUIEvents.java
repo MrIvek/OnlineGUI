@@ -10,11 +10,14 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+
+import net.md_5.bungee.api.ChatColor;
 
 public class GUIEvents implements Listener {
 
@@ -95,6 +98,25 @@ public class GUIEvents implements Listener {
 
 		if (event.getView().getTitle().startsWith("Online Players")) {
 			event.setCancelled(true);
+
+			if (clickedItem.getType().equals(Material.PLAYER_HEAD) && event.getClick().equals(ClickType.LEFT)) {
+
+				if (!player.isOp() || !player.hasPermission("minecraft.command.kick")
+						|| !player.hasPermission("minecraft:command.ban")) {
+					return;
+				}
+
+				if (ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName()).equals(player.getName())) {
+					player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 1, 1);
+					return;
+				}
+
+				OptionsGUI optionsInventory = new OptionsGUI(plugin, player,
+						clickedItem.getItemMeta().getDisplayName());
+				optionsInventory.openInventory();
+				player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+				return;
+			}
 
 			if (clickedItem.equals(ItemBuilder.CLOSE)) {
 				player.closeInventory();
