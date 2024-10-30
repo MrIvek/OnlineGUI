@@ -44,12 +44,12 @@ public class ItemBuilder {
 		if (lore != null) {
 			itemMeta.setLore(lore);
 		}
-		if (OnlineGUI.packageName.contains("1.13") || OnlineGUI.packageName.contains("1.14")
-				|| OnlineGUI.packageName.contains("1.15") || OnlineGUI.packageName.contains("1.16")
-				|| OnlineGUI.packageName.contains("1.17") || OnlineGUI.packageName.contains("1.18")) {
-			itemMeta.setUnbreakable(unbreakable);
-		} else {
-			unbreakable = false;
+		for (int i = 0; i < OnlineGUI.gameVersions.size(); i++) {
+			if (OnlineGUI.packageName.matches(OnlineGUI.gameVersions.get(i))) {
+				itemMeta.setUnbreakable(unbreakable);
+			} else {
+				unbreakable = false;
+			}
 		}
 
 		itemStack.setItemMeta(itemMeta);
@@ -84,19 +84,14 @@ public class ItemBuilder {
 	@SuppressWarnings("deprecation")
 	public ItemStack generatePlayerHead(Player player) {
 		ItemStack playerSkull;
-		if (Bukkit.getBukkitVersion().contains("1.18") || Bukkit.getBukkitVersion().contains("1.17")
-				|| Bukkit.getBukkitVersion().contains("1.16") || Bukkit.getBukkitVersion().contains("1.15")
-				|| Bukkit.getBukkitVersion().contains("1.14") || Bukkit.getBukkitVersion().contains("1.13")) {
+		if (OnlineGUI.gameVersions.contains(Bukkit.getBukkitVersion().replaceAll("-R0.1-SNAPSHOT", ""))) {
 			playerSkull = new ItemStack(Material.PLAYER_HEAD, 1);
 		} else {
 			playerSkull = new ItemStack(Material.valueOf("SKULL_ITEM"), 1, (short) 3);
 		}
 
 		SkullMeta playerSkullMeta = (SkullMeta) playerSkull.getItemMeta();
-
-		if (OnlineGUI.packageName.contains("1.13") || OnlineGUI.packageName.contains("1.14")
-				|| OnlineGUI.packageName.contains("1.15") || OnlineGUI.packageName.contains("1.16")
-				|| OnlineGUI.packageName.contains("1.17") || OnlineGUI.packageName.contains("1.18")) {
+		if (OnlineGUI.packageName.matches(OnlineGUI.gameVersions.iterator().next())) {
 			playerSkullMeta.setOwningPlayer(player);
 
 		} else {
@@ -135,23 +130,19 @@ public class ItemBuilder {
 	@SuppressWarnings("deprecation")
 	public ItemStack generatePlayerHead(Player invViewer, Player player) {
 		ItemStack playerSkull;
-		if (Bukkit.getBukkitVersion().contains("1.18") || Bukkit.getBukkitVersion().contains("1.17")
-				|| Bukkit.getBukkitVersion().contains("1.16") || Bukkit.getBukkitVersion().contains("1.15")
-				|| Bukkit.getBukkitVersion().contains("1.14") || Bukkit.getBukkitVersion().contains("1.13")) {
+		if (OnlineGUI.gameVersions.contains(Bukkit.getBukkitVersion().replaceAll("-R0.1-SNAPSHOT", ""))) {
 			playerSkull = new ItemStack(Material.PLAYER_HEAD, 1);
 		} else {
 			playerSkull = new ItemStack(Material.valueOf("SKULL_ITEM"), 1, (short) 3);
 		}
 
 		SkullMeta playerSkullMeta = (SkullMeta) playerSkull.getItemMeta();
-
-		if (OnlineGUI.packageName.contains("1.13") || OnlineGUI.packageName.contains("1.14")
-				|| OnlineGUI.packageName.contains("1.15") || OnlineGUI.packageName.contains("1.16")
-				|| OnlineGUI.packageName.contains("1.17") || OnlineGUI.packageName.contains("1.18")) {
-			playerSkullMeta.setOwningPlayer(player);
-
-		} else {
-			playerSkullMeta.setOwner(player.getName());
+		for (int i = 0; i < OnlineGUI.gameVersions.size(); i++) {
+			if (OnlineGUI.packageName.matches(OnlineGUI.gameVersions.get(i))) {
+				playerSkullMeta.setOwningPlayer(player);
+			} else {
+				playerSkullMeta.setOwner(player.getName());
+			}
 		}
 
 		playerSkullMeta.setDisplayName("§f" + player.getName());
@@ -186,6 +177,7 @@ public class ItemBuilder {
 		playerSkullMeta.setLore(lore);
 		playerSkull.setItemMeta(playerSkullMeta);
 		return playerSkull;
+
 	}
 
 	public static ItemBuilder getInstance(OnlineGUI plugin) {
