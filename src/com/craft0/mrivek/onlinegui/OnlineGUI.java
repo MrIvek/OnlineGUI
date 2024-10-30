@@ -27,9 +27,9 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 	public static final int inventorySize = 54;
 	public static final int emptySlots = 45;
 	public static String packageName = Bukkit.getServer().getClass().getPackage().getName();
-	public static final List<String> gameVersions = Arrays.asList("1.13", "1.13.1", "1.13.2",
-			"1.14", "1.14.1", "1.14.2", "1.14.3", "1.14.4", "1.15", "1.15.1", "1.15.2", "1.16.1", "1.16.2", "1.16.3",
-			"1.16.4", "1.16.5", "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2");
+	public static final List<String> gameVersions = Arrays.asList("1.13", "1.13.1", "1.13.2", "1.14", "1.14.1",
+			"1.14.2", "1.14.3", "1.14.4", "1.15", "1.15.1", "1.15.2", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
+			"1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2", "1.19.3", "1.19.4");
 
 	private GroupManager groupManager;
 	private Essentials essentialsX;
@@ -52,8 +52,6 @@ public class OnlineGUI extends JavaPlugin implements Listener {
 		getServer().getPluginManager().registerEvents(new OptionsGUI(this), this);
 
 		getCommand("online").setExecutor(new OnlineCommand(this));
-
-		Bukkit.getLogger().info(OnlineGUI.packageName);
 		super.onEnable();
 	}
 
