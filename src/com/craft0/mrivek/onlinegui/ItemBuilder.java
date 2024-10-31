@@ -29,11 +29,11 @@ public class ItemBuilder {
 		this.essentialsX = plugin.getEssentials();
 	}
 
-	public static final ItemStack NEXT_PAGE = buildNewItem(Material.ARROW, 1, "§fNext Page", null, false);
-	public static final ItemStack PREVIOUS_PAGE = buildNewItem(Material.ARROW, 1, "§fPrevious Page", null, false);
-	public static final ItemStack CLOSE = buildNewItem(Material.BARRIER, 1, "§cClose", null, false);
-	public static final ItemStack BAN = buildNewItem(Material.PAPER, 1, "§6Ban", null, false);
-	public static final ItemStack KICK = buildNewItem(Material.FEATHER, 1, "§6Kick", null, false);
+	public static final ItemStack NEXT_PAGE = buildNewItem(Material.ARROW, 1, "Â§fNext Page", null, false);
+	public static final ItemStack PREVIOUS_PAGE = buildNewItem(Material.ARROW, 1, "Â§fPrevious Page", null, false);
+	public static final ItemStack CLOSE = buildNewItem(Material.BARRIER, 1, "Â§cClose", null, false);
+	public static final ItemStack BAN = buildNewItem(Material.PAPER, 1, "Â§6Ban", null, false);
+	public static final ItemStack KICK = buildNewItem(Material.FEATHER, 1, "Â§6Kick", null, false);
 
 	public static ItemStack buildNewItem(Material material, int amount, String displayName, List<String> lore,
 			boolean unbreakable) {
@@ -98,27 +98,27 @@ public class ItemBuilder {
 			playerSkullMeta.setOwner(player.getName());
 		}
 
-		playerSkullMeta.setDisplayName("§f" + player.getName());
+		playerSkullMeta.setDisplayName("f" + player.getName());
 		List<String> lore = new ArrayList<String>();
 		if (player.isOp()) {
-			lore.add("§eOperator");
+			lore.add("Â§eOperator");
 		}
 
 		if (groupManager != null) {
-			lore.add("§7" + plugin.getGroup(player));
+			lore.add("Â§7" + plugin.getGroup(player));
 		}
 
 		if (essentialsX != null) {
-			lore.add("§a$" + essentialsX.getUser(player).getMoney());
+			lore.add("Â§a$" + essentialsX.getUser(player).getMoney());
 
 			if (essentialsX.getUser(player) != null && essentialsX.getUser(player).isAfk()) {
-				lore.add("§7----------");
-				lore.add("§cAFK");
+				lore.add("Â§7----------");
+				lore.add("Â§cAFK");
 			}
 
 			if (essentialsX.getUser(player).isMuted()) {
-				lore.add("§7----------");
-				lore.add("§4MUTED");
+				lore.add("Â§7----------");
+				lore.add("Â§4MUTED");
 			}
 		}
 
@@ -145,33 +145,33 @@ public class ItemBuilder {
 			}
 		}
 
-		playerSkullMeta.setDisplayName("§f" + player.getName());
+		playerSkullMeta.setDisplayName("Â§f" + player.getName());
 		List<String> lore = new ArrayList<String>();
 		if (player.isOp()) {
-			lore.add("§eOperator");
+			lore.add("Â§eOperator");
 		}
 
 		if (groupManager != null) {
-			lore.add("§7" + plugin.getGroup(player));
+			lore.add("Â§7" + plugin.getGroup(player));
 		}
 
 		if (essentialsX != null) {
-			lore.add("§a$" + essentialsX.getUser(player).getMoney());
+			lore.add("Â§a$" + essentialsX.getUser(player).getMoney());
 
 			if (essentialsX.getUser(player) != null && essentialsX.getUser(player).isAfk()) {
-				lore.add("§7----------");
-				lore.add("§cAFK");
+				lore.add("Â§7----------");
+				lore.add("Â§cAFK");
 			}
 
 			if (essentialsX.getUser(player).isMuted()) {
-				lore.add("§7----------");
-				lore.add("§4MUTED");
+				lore.add("Â§7----------");
+				lore.add("Â§4MUTED");
 			}
 		}
 
 		if (invViewer.isOp()) {
 			lore.add("");
-			lore.add("§7Left click to open command gui.");
+			lore.add("Â§7Left click to open command gui.");
 		}
 
 		playerSkullMeta.setLore(lore);
