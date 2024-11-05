@@ -1,0 +1,53 @@
+################################
+#                              #
+#                              #
+#          OnlineGUI           #
+#        Author: MrIvek        #
+#       Version: 1.10.1        #
+#                              #
+#                              #
+################################
+
+#==============================================================#
+#                   Example Item find on the                   #
+#   [GitHub wiki](https://github.com/MrIvek/OnlineGUI/wiki)    #
+#                                                              #
+#==============================================================#
+
+gui-options:
+    inventory:
+        title: '&0&lOptions'
+        # Available slots are 9, 18, 27, 36, 45 and 54
+        slots: 36
+    items:
+        kick:
+            action: KICK
+            # Indexing start from 0
+            slot: 11
+            material: FEATHER
+            amount: 1
+            display-name: '&e&lkick'
+            lore:
+                - '&7Click to kick the player from the server'
+        ban:
+            action: BAN
+            slot: 13
+            material: PAPER
+            amount: 1
+            display-name: '&c&lban'
+            lore:
+                - '&7Click to ban the player from the server'
+        mute:
+            action: MUTE
+            slot: 15
+            material: WOOL
+            amount: 1
+            display-name: '&c&lmute'
+            lore:
+                - '&7Click to mute the player on the server'
+        close:
+            action: CLOSE
+            slot: 35
+            material: BARRIER
+            amount: 1
+            display-name: '&4&lClose'

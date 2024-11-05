@@ -5,147 +5,187 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import org.anjocaido.groupmanager.GroupManager;
 import org.anjocaido.groupmanager.permissions.AnjoPermissionsHandler;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.earth2me.essentials.Essentials;
 
+import net.luckperms.api.LuckPerms;
+
 public class OnlineGUI extends JavaPlugin implements Listener {
 
-	public OnlineGUI plugin = this;
+    public OnlineGUI plugin = this;
 
-	public HashMap<UUID, List<Inventory>> onlineInventories = new HashMap<>();
+    public HashMap<UUID, List<Inventory>> onlineInventories = new HashMap<>();
 
-	public static final int inventorySize = 54;
-	public static final int emptySlots = 45;
-	public static String packageName = Bukkit.getServer().getClass().getPackage().getName();
-	public static final List<String> gameVersions = Arrays.asList("1.13", "1.13.1", "1.13.2", "1.14", "1.14.1",
-			"1.14.2", "1.14.3", "1.14.4", "1.15", "1.15.1", "1.15.2", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
-			"1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2", "1.19.3", "1.19.4", "1.20",
-			"1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3");
+    public static final int inventorySize = 54;
+    public static final int emptySlots = 45;
+    public static String packageName = Bukkit.getServer().getClass().getPackage().getName();
+    public static final List<String> gameVersions = Arrays.asList("1.13", "1.13.1", "1.13.2", "1.14", "1.14.1",
+            "1.14.2", "1.14.3", "1.14.4", "1.15", "1.15.1", "1.15.2", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
+            "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2", "1.19.3", "1.19.4", "1.20",
+            "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3");
 
-	private GroupManager groupManager;
-	private Essentials essentialsX;
+    private GroupManager groupManager;
+    private Essentials essentialsX;
+    private LuckPerms luckPermsAPI;
 
-	@Override
-	public void onEnable() {
-		final Plugin pluginGroupManager = getServer().getPluginManager().getPlugin("GroupManager");
-		final Plugin pluginEssentialsX = getServer().getPluginManager().getPlugin("Essentials");
+    @Override
+    public void onEnable() {
+        Logger logger = getLogger();
+        final Plugin pluginGroupManager = getServer().getPluginManager().getPlugin("GroupManager");
+        final Plugin pluginEssentialsX = getServer().getPluginManager().getPlugin("Essentials");
 
-		if (pluginGroupManager != null && pluginGroupManager.isEnabled()) {
-			groupManager = (GroupManager) pluginGroupManager;
-		}
+        if (pluginGroupManager != null && pluginGroupManager.isEnabled()) {
+            groupManager = (GroupManager) pluginGroupManager;
+            logger.info("GroupManager is ENABLED");
+        } else {
+            logger.info("GroupManager is DISABLED");
+        }
 
-		if (pluginEssentialsX != null && pluginEssentialsX.isEnabled()) {
-			essentialsX = (Essentials) pluginEssentialsX;
-		}
+        if (pluginEssentialsX != null && pluginEssentialsX.isEnabled()) {
+            essentialsX = (Essentials) pluginEssentialsX;
+            logger.info("Essentials is ENABLED");
+        } else {
+            logger.info("Essentials is DISABLED");
+        }
 
-		closeAllInventories();
-		getServer().getPluginManager().registerEvents(new GUIEvents(this), this);
-		getServer().getPluginManager().registerEvents(new OptionsGUI(this), this);
+        RegisteredServiceProvider<LuckPerms> provider = Bukkit.getServicesManager().getRegistration(LuckPerms.class);
+        if (provider != null) {
+            luckPermsAPI = provider.getProvider();
+            logger.info("LuckPerms is ENABLED");
+        } else {
+            logger.info("LuckPerms is DISABLED");
+        }
 
-		getCommand("online").setExecutor(new OnlineCommand(this));
-		super.onEnable();
-	}
+        closeAllInventories();
+        getServer().getPluginManager().registerEvents(new GUIEvents(this), this);
 
-	@Override
-	public void onDisable() {
-		super.onDisable();
-	}
+        getCommand("online").setExecutor(new OnlineCommand(this));
 
-	public void openOnlineList(Player player) {
-		int numberOfOnlinePlayers = getServer().getOnlinePlayers().size();
-		int neededInventories = Math.max(1, (int) Math.ceil((double) numberOfOnlinePlayers / emptySlots));
+        saveDefaultConfig();
+        super.onEnable();
+    }
 
-		List<Inventory> inventories = new ArrayList<>();
-		for (int i = 0; i < neededInventories; i++) {
-			Inventory newInv = Bukkit.createInventory(null, inventorySize, "Online Players P" + i);
-			inventories.add(newInv);
-		}
-		onlineInventories.put(player.getUniqueId(), inventories);
+    @Override
+    public void onDisable() {
+        super.onDisable();
+    }
 
-		for (int i = 0; i < numberOfOnlinePlayers; i++) {
-			int inventoryIndex = i / emptySlots;
+    public void openOnlineList(Player player) {
+        int numberOfOnlinePlayers = getServer().getOnlinePlayers().size();
+        int neededInventories = Math.max(1, (int) Math.ceil((double) numberOfOnlinePlayers / emptySlots));
 
-			Inventory inventory = onlineInventories.get(player.getUniqueId()).get(0);
-			inventory.clear();
-			if (i == emptySlots) {
-				inventory = onlineInventories.get(player.getUniqueId()).get(inventoryIndex++);
-			}
+        List<Inventory> inventories = new ArrayList<>();
+        for (int i = 0; i < neededInventories; i++) {
+            Inventory newInv = Bukkit.createInventory(null, inventorySize, "Online Players P" + i);
+            inventories.add(newInv);
+        }
+        onlineInventories.put(player.getUniqueId(), inventories);
 
-			for (Player onlinePlayer : getServer().getOnlinePlayers()) {
-				ItemStack playerHead = ItemBuilder.getInstance(this).generatePlayerHead(player, onlinePlayer);
-				if (essentialsX != null) {
-					if (essentialsX.getUser(onlinePlayer).isVanished()) {
-						if (!player.hasPermission("essentials.vanish.see")) {
-							continue;
-						}
-					}
-				}
+        for (int i = 0; i < numberOfOnlinePlayers; i++) {
+            int inventoryIndex = i / emptySlots;
 
-				if (!inventory.contains(playerHead)) {
-					inventory.addItem(playerHead);
-				}
-			}
+            Inventory inventory = onlineInventories.get(player.getUniqueId()).get(0);
+            inventory.clear();
+            if (i == emptySlots) {
+                inventory = onlineInventories.get(player.getUniqueId()).get(inventoryIndex++);
+            }
 
-			if (inventoryIndex != neededInventories - 1) {
-				inventory.setItem(53, ItemBuilder.NEXT_PAGE);
-			}
+            for (Player onlinePlayer : getServer().getOnlinePlayers()) {
+                ItemStack playerHead = ItemBuilder.getInstance(this).generatePlayerHead(player, onlinePlayer);
+                if (essentialsX != null) {
+                    if (essentialsX.getUser(onlinePlayer).isVanished()) {
+                        if (!player.hasPermission("essentials.vanish.see")) {
+                            continue;
+                        }
+                    }
+                }
 
-			if (inventoryIndex >= 1) {
-				inventory.setItem(45, ItemBuilder.PREVIOUS_PAGE);
-			}
+                if (!inventory.contains(playerHead)) {
+                    inventory.addItem(playerHead);
+                }
+            }
 
-			inventory.setItem(49, ItemBuilder.CLOSE);
-		}
+            if (inventoryIndex != neededInventories - 1) {
+                inventory.setItem(53, ItemBuilder.NEXT_PAGE);
+            }
 
-		player.openInventory(onlineInventories.get(player.getUniqueId()).get(0));
-		return;
-	}
+            if (inventoryIndex >= 1) {
+                inventory.setItem(45, ItemBuilder.PREVIOUS_PAGE);
+            }
 
-	public void closeAllInventories() {
-		for (Player player : getServer().getOnlinePlayers()) {
-			player.closeInventory();
-		}
-	}
+            inventory.setItem(49, ItemBuilder.CLOSE);
+        }
 
-	public String getGroup(final Player base) {
-		final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
-		if (handler == null) {
-			return null;
-		}
-		return handler.getGroup(base.getName());
-	}
+        player.openInventory(onlineInventories.get(player.getUniqueId()).get(0));
+        return;
+    }
 
-	public String getPrefix(final Player base) {
-		final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
-		if (handler == null) {
-			return null;
-		}
-		return handler.getUserPrefix(base.getName());
-	}
+    public void closeAllInventories() {
+        for (Player player : getServer().getOnlinePlayers()) {
+            player.closeInventory();
+        }
+    }
 
-	public String getSuffix(final Player base) {
-		final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
-		if (handler == null) {
-			return null;
-		}
-		return handler.getUserSuffix(base.getName());
-	}
+    public String getGroup(final Player base) {
+        final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
+        if (handler == null) {
+            return null;
+        }
+        return handler.getGroup(base.getName());
+    }
 
-	public GroupManager getGroupManager() {
-		return groupManager;
-	}
+    public String getPrefix(final Player base) {
+        final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
+        if (handler == null) {
+            return null;
+        }
+        return handler.getUserPrefix(base.getName());
+    }
 
-	public Essentials getEssentials() {
-		return essentialsX;
-	}
+    public String getSuffix(final Player base) {
+        final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
+        if (handler == null) {
+            return null;
+        }
+        return handler.getUserSuffix(base.getName());
+    }
+
+    public GroupManager getGroupManager() {
+        return groupManager;
+    }
+
+    public Essentials getEssentials() {
+        return essentialsX;
+    }
+
+    public LuckPerms getLuckPermsAPI() {
+        return luckPermsAPI;
+    }
+
+    public static List<String> colorize(List<String> list) {
+        return list.stream().map(line -> ChatColor.translateAlternateColorCodes('&', line))
+                .collect(Collectors.toList());
+    }
+
+    public static String colorize(String text) {
+        return ChatColor.translateAlternateColorCodes('&', text);
+    }
+
+    enum ActionType {
+        KICK, BAN, MUTE, CLOSE;
+    }
 }
