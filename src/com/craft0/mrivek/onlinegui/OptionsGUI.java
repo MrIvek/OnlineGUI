@@ -1,79 +1,58 @@
 package com.craft0.mrivek.onlinegui;
 
+import java.util.Locale;
 import org.bukkit.Material;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
+import com.craft0.mrivek.onlinegui.OnlineGUI.ActionType;
 
-public class OptionsGUI implements Listener {
+public final class OptionsGUI {
+    private final Player viewer;
+    private final Inventory inventory;
 
-    public OnlineGUI plugin;
-    public Inventory inventory;
-    public Player player;
-    public String title;
-    public FileConfiguration config;
-    public InventoryClickEvent inventoryClickedEvent;
-    public Player person;
-
-    public OptionsGUI(OnlineGUI plugin) {
-        this.setPlugin(plugin);
-        this.config = plugin.getConfig();
-    }
-
-    public OptionsGUI(OnlineGUI plugin, Player player, Player person) {
-        this.setPlugin(plugin);
-        this.player = player;
-        this.title = plugin.getConfig().getString(plugin.getConfig().getString("gui-options.inventory.title"));
-        this.config = plugin.getConfig();
-        this.inventory = plugin.getServer().createInventory(player, 36,
-                OnlineGUI.colorize(plugin.getConfig().getString("gui-options.inventory.title")));
-        this.person = person;
-
-        loadItems();
-
-        player.sendMessage(person.toString());
-
-    }
-
-    public void loadItems() {
-        for (String item : config.getConfigurationSection("gui-options.items").getKeys(false)) {
-            ItemStack newItem = ItemBuilder.buildNewItem(
-                    Material.valueOf(config.getString("gui-options.items." + item + ".material")),
-                    config.getInt("gui-options.items." + item + ".amount"),
-                    config.getString("gui-options.items." + item + ".display-name"),
-                    config.getStringList("gui-options.items." + item + ".lore"), false);
-            inventory.setItem(config.getInt("gui-options.items." + item + ".slot"), newItem);
+    public OptionsGUI(OnlineGUI plugin, Player viewer, Player target) {
+        this.viewer = viewer;
+        int size = plugin.getConfig().getInt("gui-options.inventory.slots", 36);
+        if (size < 9 || size > 54 || size % 9 != 0) {
+            plugin.getLogger().warning("Invalid options inventory size; using 36 slots.");
+            size = 36;
+        }
+        GuiInventory menu = GuiInventory.options(viewer.getUniqueId(), target.getUniqueId());
+        inventory = plugin.getServer().createInventory(menu, size,
+                OnlineGUI.colorize(plugin.getConfig().getString("gui-options.inventory.title", "&0&lOptions")));
+        menu.setInventory(inventory);
+        ConfigurationSection items = plugin.getConfig().getConfigurationSection("gui-options.items");
+        if (items == null) { return; }
+        for (String key : items.getKeys(false)) {
+            ConfigurationSection item = items.getConfigurationSection(key);
+            try {
+                if (item == null) { throw new IllegalArgumentException("Expected an item section"); }
+                ActionType action = ActionType.valueOf(item.getString("action", "CLOSE").toUpperCase(Locale.ROOT));
+                int slot = item.getInt("slot", -1);
+                if (slot < 0 || slot >= size || menu.getAction(slot) != null) {
+                    throw new IllegalArgumentException("Invalid or duplicate slot: " + slot);
+                }
+                String materialName = item.getString("material", "BARRIER");
+                // Support old configurations using the pre-flattening name.
+                Material material = Material.matchMaterial("WOOL".equalsIgnoreCase(materialName)
+                        ? "WHITE_WOOL" : materialName);
+                if (material == null || material == Material.AIR || !material.isItem()) {
+                    throw new IllegalArgumentException("Invalid item material: " + materialName);
+                }
+                int amount = item.getInt("amount", 1);
+                if (amount < 1 || amount > material.getMaxStackSize()) {
+                    throw new IllegalArgumentException("Invalid amount: " + amount);
+                }
+                if (!OnlineGUI.canPerform(viewer, action)) { continue; }
+                inventory.setItem(slot, ItemBuilder.buildNewItem(material, amount,
+                        item.getString("display-name", key), item.getStringList("lore"), false));
+                menu.setAction(slot, action);
+            } catch (IllegalArgumentException exception) {
+                plugin.getLogger().warning("Skipping gui-options.items." + key + ": " + exception.getMessage());
+            }
         }
     }
 
-    public void openInventory() {
-        player.openInventory(inventory);
-    }
-    
-    public Inventory getInventory() {
-        return inventory;
-    }
-
-    public Player getViewer() {
-        return player;
-    }
-
-    public Player getPerson() {
-        return (Player) person;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public OnlineGUI getPlugin() {
-        return plugin;
-    }
-
-    public void setPlugin(OnlineGUI plugin) {
-        this.plugin = plugin;
-    }
+    public void openInventory() { viewer.openInventory(inventory); }
 }

@@ -3,7 +3,7 @@
 #                              #
 #          OnlineGUI           #
 #        Author: MrIvek        #
-#       Version: 1.10.1        #
+#       Version: 1.11.0        #
 #                              #
 #                              #
 ################################
@@ -40,7 +40,7 @@ gui-options:
         mute:
             action: MUTE
             slot: 15
-            material: WOOL
+            material: WHITE_WOOL
             amount: 1
             display-name: '&c&lmute'
             lore:
@@ -51,3 +51,12 @@ gui-options:
             material: BARRIER
             amount: 1
             display-name: '&4&lClose'
+
+# Enable only on a Bukkit server behind BungeeCord.
+# Each destination also requires onlinegui.server.<server-name> (or onlinegui.server.*).
+bungeecord:
+    enabled: false
+    # Optional allowlist of server names from BungeeCord config.yml.
+    # Empty means discover all servers, then filter by the viewer's permissions.
+    servers: []
+    request-timeout-seconds: 5
