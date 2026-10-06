@@ -1,12 +1,28 @@
 name: OnlineGUI
 author: MrIvek
-version: 1.10.1
+version: ${project.version}
 main: com.craft0.mrivek.onlinegui.OnlineGUI
 description: Display all online players in minecraft inventory.
 softdepend: [Essentials, GroupManager, LuckPerms]
-api-version: 1.13
+api-version: '1.13'
 commands:
   online:
     usage: /online
     description: See who is online on the server.
     aliases: [players, list]
+permissions:
+  onlinegui.kick:
+    description: Kick players through the options GUI.
+    default: op
+  onlinegui.ban:
+    description: Ban players through the options GUI.
+    default: op
+  onlinegui.mute:
+    description: Mute players through EssentialsX.
+    default: op
+  onlinegui.servers:
+    description: Open the BungeeCord server switcher.
+    default: true
+  onlinegui.server.*:
+    description: Switch to any configured BungeeCord server.
+    default: op

@@ -1,191 +1,194 @@
 package com.craft0.mrivek.onlinegui;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
-import java.util.logging.Logger;
+import java.util.Objects;
 import java.util.stream.Collectors;
-
-import org.anjocaido.groupmanager.GroupManager;
-import org.anjocaido.groupmanager.permissions.AnjoPermissionsHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-
 import com.earth2me.essentials.Essentials;
-
+import com.earth2me.essentials.User;
 import net.luckperms.api.LuckPerms;
 
-public class OnlineGUI extends JavaPlugin implements Listener {
-
-    public OnlineGUI plugin = this;
-
-    public HashMap<UUID, List<Inventory>> onlineInventories = new HashMap<>();
-
-    public static final int inventorySize = 54;
-    public static final int emptySlots = 45;
-    public static String packageName = Bukkit.getServer().getClass().getPackage().getName();
-    public static final List<String> gameVersions = Arrays.asList("1.13", "1.13.1", "1.13.2", "1.14", "1.14.1",
-            "1.14.2", "1.14.3", "1.14.4", "1.15", "1.15.1", "1.15.2", "1.16.1", "1.16.2", "1.16.3", "1.16.4", "1.16.5",
-            "1.17", "1.17.1", "1.18", "1.18.1", "1.18.2", "1.19", "1.19.1", "1.19.2", "1.19.3", "1.19.4", "1.20",
-            "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3");
-
-    private GroupManager groupManager;
-    private Essentials essentialsX;
-    private LuckPerms luckPermsAPI;
+public final class OnlineGUI extends JavaPlugin {
+    static final int INVENTORY_SIZE = 54;
+    static final int PLAYER_SLOTS = 45;
+    private Plugin groupManager;
+    private Essentials essentials;
+    private LuckPerms luckPerms;
+    private ItemBuilder itemBuilder;
+    private boolean refreshPending;
+    private BungeeSupport bungeeSupport;
 
     @Override
     public void onEnable() {
-        Logger logger = getLogger();
-        final Plugin pluginGroupManager = getServer().getPluginManager().getPlugin("GroupManager");
-        final Plugin pluginEssentialsX = getServer().getPluginManager().getPlugin("Essentials");
-
-        if (pluginGroupManager != null && pluginGroupManager.isEnabled()) {
-            groupManager = (GroupManager) pluginGroupManager;
-            logger.info("GroupManager is ENABLED");
-        } else {
-            logger.info("GroupManager is DISABLED");
-        }
-
-        if (pluginEssentialsX != null && pluginEssentialsX.isEnabled()) {
-            essentialsX = (Essentials) pluginEssentialsX;
-            logger.info("Essentials is ENABLED");
-        } else {
-            logger.info("Essentials is DISABLED");
-        }
-
-        RegisteredServiceProvider<LuckPerms> provider = Bukkit.getServicesManager().getRegistration(LuckPerms.class);
-        if (provider != null) {
-            luckPermsAPI = provider.getProvider();
-            logger.info("LuckPerms is ENABLED");
-        } else {
-            logger.info("LuckPerms is DISABLED");
-        }
-
-        closeAllInventories();
-        getServer().getPluginManager().registerEvents(new GUIEvents(this), this);
-
-        getCommand("online").setExecutor(new OnlineCommand(this));
-
         saveDefaultConfig();
-        super.onEnable();
+        groupManager = enabledPlugin("GroupManager");
+        Plugin essentialsPlugin = enabledPlugin("Essentials");
+        if (essentialsPlugin != null && essentialsPlugin instanceof Essentials) {
+            essentials = (Essentials) essentialsPlugin;
+        }
+        // Resolve optional API classes only when their plugin is installed.
+        if (enabledPlugin("LuckPerms") != null) {
+            RegisteredServiceProvider<LuckPerms> provider =
+                    getServer().getServicesManager().getRegistration(LuckPerms.class);
+            if (provider != null) {
+                luckPerms = provider.getProvider();
+            }
+        }
+        itemBuilder = new ItemBuilder(this);
+        if (getConfig().getBoolean("bungeecord.enabled", false)) {
+            bungeeSupport = new BungeeSupport(this);
+            bungeeSupport.register();
+        }
+        getServer().getPluginManager().registerEvents(new GUIEvents(this), this);
+        Objects.requireNonNull(getCommand("online"), "Missing online command in plugin.yml")
+                .setExecutor(new OnlineCommand(this));
+    }
+
+    private Plugin enabledPlugin(String name) {
+        Plugin plugin = getServer().getPluginManager().getPlugin(name);
+        return plugin != null && plugin.isEnabled() ? plugin : null;
     }
 
     @Override
     public void onDisable() {
-        super.onDisable();
+        if (bungeeSupport != null) { bungeeSupport.close(); }
+        for (Player player : getServer().getOnlinePlayers()) {
+            if (InventoryViews.top(player.getOpenInventory()).getHolder() instanceof GuiInventory) {
+                player.closeInventory();
+            }
+        }
     }
 
-    public void openOnlineList(Player player) {
-        int numberOfOnlinePlayers = getServer().getOnlinePlayers().size();
-        int neededInventories = Math.max(1, (int) Math.ceil((double) numberOfOnlinePlayers / emptySlots));
+    public void openOnlineList(Player viewer) {
+        openOnlineList(viewer, 0);
+    }
 
-        List<Inventory> inventories = new ArrayList<>();
-        for (int i = 0; i < neededInventories; i++) {
-            Inventory newInv = Bukkit.createInventory(null, inventorySize, "Online Players P" + i);
-            inventories.add(newInv);
+    void openOnlineList(Player viewer, int requestedPage) {
+        List<Player> players = getServer().getOnlinePlayers().stream()
+                .filter(target -> canSee(viewer, target))
+                .sorted(Comparator.comparing(Player::getName, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+        int pageCount = Math.max(1, (players.size() + PLAYER_SLOTS - 1) / PLAYER_SLOTS);
+        int page = Math.max(0, Math.min(requestedPage, pageCount - 1));
+        GuiInventory menu = GuiInventory.online(viewer.getUniqueId(), page);
+        Inventory inventory = Bukkit.createInventory(menu, INVENTORY_SIZE,
+                "Online Players P" + (page + 1));
+        menu.setInventory(inventory);
+        int start = page * PLAYER_SLOTS;
+        for (int index = start; index < Math.min(start + PLAYER_SLOTS, players.size()); index++) {
+            Player target = players.get(index);
+            int slot = index - start;
+            inventory.setItem(slot, itemBuilder.generatePlayerHead(viewer, target));
+            menu.setTarget(slot, target.getUniqueId());
         }
-        onlineInventories.put(player.getUniqueId(), inventories);
+        if (page > 0) {
+            inventory.setItem(45, ItemBuilder.previousPage());
+        }
+        inventory.setItem(49, ItemBuilder.close());
+        if (bungeeSupport != null && viewer.hasPermission("onlinegui.servers")) {
+            inventory.setItem(48, ItemBuilder.buildNewItem(org.bukkit.Material.COMPASS, 1,
+                    "&aSwitch server", java.util.Arrays.asList("&7View servers you can join"), false));
+        }
+        if (page + 1 < pageCount) {
+            inventory.setItem(53, ItemBuilder.nextPage());
+        }
+        viewer.openInventory(inventory);
+    }
 
-        for (int i = 0; i < numberOfOnlinePlayers; i++) {
-            int inventoryIndex = i / emptySlots;
+    boolean canSee(Player viewer, Player target) {
+        if (!viewer.canSee(target)) {
+            return false;
+        }
+        Essentials active = getEssentials();
+        if (active != null) {
+            User user = active.getUser(target);
+            return user == null || !user.isVanished() || viewer.hasPermission("essentials.vanish.see");
+        }
+        return true;
+    }
 
-            Inventory inventory = onlineInventories.get(player.getUniqueId()).get(0);
-            inventory.clear();
-            if (i == emptySlots) {
-                inventory = onlineInventories.get(player.getUniqueId()).get(inventoryIndex++);
-            }
-
-            for (Player onlinePlayer : getServer().getOnlinePlayers()) {
-                ItemStack playerHead = ItemBuilder.getInstance(this).generatePlayerHead(player, onlinePlayer);
-                if (essentialsX != null) {
-                    if (essentialsX.getUser(onlinePlayer).isVanished()) {
-                        if (!player.hasPermission("essentials.vanish.see")) {
-                            continue;
+    // Coalesce joins/quits in the same tick and refresh only menus being viewed.
+    void scheduleRefresh() {
+        if (refreshPending) {
+            return;
+        }
+        refreshPending = true;
+        getServer().getScheduler().runTask(this, () -> {
+            refreshPending = false;
+            for (Player viewer : getServer().getOnlinePlayers()) {
+                Inventory top = InventoryViews.top(viewer.getOpenInventory());
+                if (top.getHolder() instanceof GuiInventory) {
+                    GuiInventory menu = (GuiInventory) top.getHolder();
+                    if (menu.isOnlineList()) {
+                        openOnlineList(viewer, menu.getPage());
+                    } else if (!menu.isServerList()) {
+                        Player target = Bukkit.getPlayer(menu.getTarget());
+                        if (target == null || !canSee(viewer, target)) {
+                            viewer.closeInventory();
                         }
                     }
                 }
-
-                if (!inventory.contains(playerHead)) {
-                    inventory.addItem(playerHead);
-                }
             }
-
-            if (inventoryIndex != neededInventories - 1) {
-                inventory.setItem(53, ItemBuilder.NEXT_PAGE);
-            }
-
-            if (inventoryIndex >= 1) {
-                inventory.setItem(45, ItemBuilder.PREVIOUS_PAGE);
-            }
-
-            inventory.setItem(49, ItemBuilder.CLOSE);
-        }
-
-        player.openInventory(onlineInventories.get(player.getUniqueId()).get(0));
-        return;
+        });
     }
 
-    public void closeAllInventories() {
-        for (Player player : getServer().getOnlinePlayers()) {
-            player.closeInventory();
-        }
-    }
-
-    public String getGroup(final Player base) {
-        final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
-        if (handler == null) {
+    public String getGroup(Player player) {
+        if (groupManager == null || !groupManager.isEnabled()) {
             return null;
         }
-        return handler.getGroup(base.getName());
-    }
-
-    public String getPrefix(final Player base) {
-        final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
-        if (handler == null) {
+        // GroupManager has no stable Maven API; isolate its optional classes.
+        try {
+            Object worlds = groupManager.getClass().getMethod("getWorldsHolder").invoke(groupManager);
+            Object handler = worlds.getClass().getMethod("getWorldPermissions", Player.class)
+                    .invoke(worlds, player);
+            return handler == null ? null : (String) handler.getClass()
+                    .getMethod("getGroup", String.class).invoke(handler, player.getName());
+        } catch (ReflectiveOperationException exception) {
+            getLogger().warning("Disabling GroupManager integration: " + exception.getMessage());
+            groupManager = null;
             return null;
         }
-        return handler.getUserPrefix(base.getName());
-    }
-
-    public String getSuffix(final Player base) {
-        final AnjoPermissionsHandler handler = groupManager.getWorldsHolder().getWorldPermissions(base);
-        if (handler == null) {
-            return null;
-        }
-        return handler.getUserSuffix(base.getName());
-    }
-
-    public GroupManager getGroupManager() {
-        return groupManager;
     }
 
     public Essentials getEssentials() {
-        return essentialsX;
+        return essentials != null && essentials.isEnabled() ? essentials : null;
     }
 
-    public LuckPerms getLuckPermsAPI() {
-        return luckPermsAPI;
+    public LuckPerms getLuckPermsAPI() { return luckPerms; }
+    BungeeSupport getBungeeSupport() { return bungeeSupport; }
+
+    static boolean canModerate(Player player) {
+        return canPerform(player, ActionType.KICK) || canPerform(player, ActionType.BAN)
+                || canPerform(player, ActionType.MUTE);
     }
 
-    public static List<String> colorize(List<String> list) {
-        return list.stream().map(line -> ChatColor.translateAlternateColorCodes('&', line))
-                .collect(Collectors.toList());
+    static boolean canPerform(Player player, ActionType action) {
+        switch (action) {
+            case KICK:
+                return player.hasPermission("onlinegui.kick") || player.hasPermission("minecraft.command.kick");
+            case BAN:
+                return player.hasPermission("onlinegui.ban") || player.hasPermission("minecraft.command.ban");
+            case MUTE:
+                return player.hasPermission("onlinegui.mute") || player.hasPermission("essentials.mute");
+            default:
+                return true;
+        }
+    }
+
+    public static List<String> colorize(List<String> lines) {
+        return lines.stream().map(OnlineGUI::colorize).collect(Collectors.toList());
     }
 
     public static String colorize(String text) {
-        return ChatColor.translateAlternateColorCodes('&', text);
+        return ChatColor.translateAlternateColorCodes('&', text == null ? "" : text);
     }
 
-    enum ActionType {
-        KICK, BAN, MUTE, CLOSE;
-    }
+    enum ActionType { KICK, BAN, MUTE, CLOSE }
 }
